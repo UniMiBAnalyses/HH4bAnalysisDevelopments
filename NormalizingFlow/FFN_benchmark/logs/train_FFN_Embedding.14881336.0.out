@@ -1,0 +1,192 @@
+==========================================
+Job started at: Sun Mar  8 12:02:48 PM CET 2026
+Running on host: b9pgpun501.cern.ch
+Working directory: /pool/condor/dir_2342254
+Training: main_cathegorical_embedding.py
+==========================================
+GPU Information on the node:
+Sun Mar  8 12:02:48 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.126.20             Driver Version: 580.126.20     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:09:00.0 Off |                    0 |
+| N/A   38C    P0             63W /  400W |       4MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+==========================================
+Starting training at: Sun Mar  8 12:02:48 PM CET 2026
+==========================================
+Inside container:
+Python version: Python 3.9.21
+PyTorch version: 2.6.0+cu124
+GPU devices available: 1
+GPU details: ['NVIDIA H100 NVL']
+
+Installing required packages...
+Packages installed.
+
+Shape before bootstrapping: 2b=(5187675, 36), 4b=(94974, 36)
+Shape after bootstrapping: 2b=(5187675, 36), 4b=(5187675, 36)
+Final data shape: X=(10375350, 36), y=(10375350, 1)
+era: min=0, max=1
+njet (remapped): min=0, max=12
+  Total input dimension after embedding: 44 (Continuous: 34, Categorical: 2 with embedding dim 5)
+
+============================================================
+FFNEmbeddingNetwork(
+  (embeddings): ModuleList(
+    (0): Embedding(2, 5)
+    (1): Embedding(13, 5)
+  )
+  (embedding_batch_norm): BatchNorm1d(10, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (input_batch_norm): BatchNorm1d(44, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (network): Sequential(
+    (0): Linear(in_features=44, out_features=512, bias=True)
+    (1): GELU(approximate='none')
+    (2): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): Dropout(p=0.2, inplace=False)
+    (4): Linear(in_features=512, out_features=256, bias=True)
+    (5): GELU(approximate='none')
+    (6): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): Dropout(p=0.2, inplace=False)
+    (8): Linear(in_features=256, out_features=128, bias=True)
+    (9): GELU(approximate='none')
+    (10): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): Dropout(p=0.2, inplace=False)
+    (12): Linear(in_features=128, out_features=64, bias=True)
+    (13): GELU(approximate='none')
+    (14): BatchNorm1d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (15): Dropout(p=0.2, inplace=False)
+    (16): Linear(in_features=64, out_features=2, bias=True)
+  )
+)
+============================================================
+Total parameters: 197,753
+Trainable parameters: 197,753
+Continuous features: 34
+Categorical features: 2
+Embedding dimension: 5
+Categorical dimensions: [2, 13]
+Embedding noise std: 0.1
+
+Starting training...
+Starting training...
+Epoch 1/9999 - loss: 0.5897 - accuracy: 0.6870 - val_loss: 0.5606 - val_accuracy: 0.7080 - lr: 1.00e-03
+Epoch 2/9999 - loss: 0.5600 - accuracy: 0.7087 - val_loss: 0.5139 - val_accuracy: 0.7452 - lr: 9.50e-04
+Epoch 3/9999 - loss: 0.5403 - accuracy: 0.7235 - val_loss: 0.4852 - val_accuracy: 0.7676 - lr: 9.02e-04
+Epoch 4/9999 - loss: 0.5282 - accuracy: 0.7325 - val_loss: 0.4684 - val_accuracy: 0.7837 - lr: 8.57e-04
+Epoch 5/9999 - loss: 0.5197 - accuracy: 0.7391 - val_loss: 0.4478 - val_accuracy: 0.7961 - lr: 8.15e-04
+Epoch 6/9999 - loss: 0.5134 - accuracy: 0.7438 - val_loss: 0.4396 - val_accuracy: 0.8037 - lr: 7.74e-04
+Epoch 7/9999 - loss: 0.5086 - accuracy: 0.7476 - val_loss: 0.4325 - val_accuracy: 0.8114 - lr: 7.35e-04
+Epoch 8/9999 - loss: 0.5047 - accuracy: 0.7506 - val_loss: 0.4252 - val_accuracy: 0.8169 - lr: 6.98e-04
+Epoch 9/9999 - loss: 0.5011 - accuracy: 0.7533 - val_loss: 0.4227 - val_accuracy: 0.8212 - lr: 6.63e-04
+Epoch 10/9999 - loss: 0.4981 - accuracy: 0.7555 - val_loss: 0.4127 - val_accuracy: 0.8249 - lr: 6.30e-04
+Epoch 11/9999 - loss: 0.4956 - accuracy: 0.7573 - val_loss: 0.4116 - val_accuracy: 0.8309 - lr: 5.99e-04
+Epoch 12/9999 - loss: 0.4931 - accuracy: 0.7591 - val_loss: 0.4050 - val_accuracy: 0.8324 - lr: 5.69e-04
+Epoch 13/9999 - loss: 0.4912 - accuracy: 0.7606 - val_loss: 0.4020 - val_accuracy: 0.8350 - lr: 5.40e-04
+Epoch 14/9999 - loss: 0.4891 - accuracy: 0.7621 - val_loss: 0.4042 - val_accuracy: 0.8363 - lr: 5.13e-04
+Epoch 15/9999 - loss: 0.4873 - accuracy: 0.7634 - val_loss: 0.3984 - val_accuracy: 0.8388 - lr: 4.88e-04
+Epoch 16/9999 - loss: 0.4856 - accuracy: 0.7646 - val_loss: 0.3922 - val_accuracy: 0.8420 - lr: 4.63e-04
+Epoch 17/9999 - loss: 0.4840 - accuracy: 0.7658 - val_loss: 0.3938 - val_accuracy: 0.8411 - lr: 4.40e-04
+Epoch 18/9999 - loss: 0.4824 - accuracy: 0.7672 - val_loss: 0.3871 - val_accuracy: 0.8434 - lr: 4.18e-04
+Epoch 19/9999 - loss: 0.4807 - accuracy: 0.7681 - val_loss: 0.3854 - val_accuracy: 0.8455 - lr: 3.97e-04
+Epoch 20/9999 - loss: 0.4793 - accuracy: 0.7691 - val_loss: 0.3858 - val_accuracy: 0.8478 - lr: 3.77e-04
+Epoch 21/9999 - loss: 0.4778 - accuracy: 0.7703 - val_loss: 0.3829 - val_accuracy: 0.8459 - lr: 3.58e-04
+Epoch 22/9999 - loss: 0.4760 - accuracy: 0.7716 - val_loss: 0.3805 - val_accuracy: 0.8478 - lr: 3.41e-04
+Epoch 23/9999 - loss: 0.4749 - accuracy: 0.7723 - val_loss: 0.3769 - val_accuracy: 0.8506 - lr: 3.24e-04
+Epoch 24/9999 - loss: 0.4737 - accuracy: 0.7732 - val_loss: 0.3756 - val_accuracy: 0.8526 - lr: 3.07e-04
+Epoch 25/9999 - loss: 0.4727 - accuracy: 0.7739 - val_loss: 0.3777 - val_accuracy: 0.8522 - lr: 2.92e-04
+Epoch 26/9999 - loss: 0.4717 - accuracy: 0.7745 - val_loss: 0.3736 - val_accuracy: 0.8537 - lr: 2.77e-04
+Epoch 27/9999 - loss: 0.4705 - accuracy: 0.7754 - val_loss: 0.3719 - val_accuracy: 0.8546 - lr: 2.64e-04
+Epoch 28/9999 - loss: 0.4698 - accuracy: 0.7758 - val_loss: 0.3747 - val_accuracy: 0.8509 - lr: 2.50e-04
+Epoch 29/9999 - loss: 0.4692 - accuracy: 0.7762 - val_loss: 0.3720 - val_accuracy: 0.8553 - lr: 2.38e-04
+Epoch 30/9999 - loss: 0.4683 - accuracy: 0.7769 - val_loss: 0.3699 - val_accuracy: 0.8568 - lr: 2.26e-04
+Epoch 31/9999 - loss: 0.4679 - accuracy: 0.7770 - val_loss: 0.3712 - val_accuracy: 0.8561 - lr: 2.15e-04
+Epoch 32/9999 - loss: 0.4673 - accuracy: 0.7775 - val_loss: 0.3655 - val_accuracy: 0.8585 - lr: 2.04e-04
+Epoch 33/9999 - loss: 0.4667 - accuracy: 0.7779 - val_loss: 0.3665 - val_accuracy: 0.8568 - lr: 1.94e-04
+Epoch 34/9999 - loss: 0.4662 - accuracy: 0.7783 - val_loss: 0.3648 - val_accuracy: 0.8591 - lr: 1.84e-04
+Epoch 35/9999 - loss: 0.4659 - accuracy: 0.7785 - val_loss: 0.3666 - val_accuracy: 0.8574 - lr: 1.75e-04
+Epoch 36/9999 - loss: 0.4652 - accuracy: 0.7789 - val_loss: 0.3668 - val_accuracy: 0.8573 - lr: 1.66e-04
+Epoch 37/9999 - loss: 0.4649 - accuracy: 0.7794 - val_loss: 0.3618 - val_accuracy: 0.8605 - lr: 1.58e-04
+Epoch 38/9999 - loss: 0.4644 - accuracy: 0.7794 - val_loss: 0.3678 - val_accuracy: 0.8580 - lr: 1.50e-04
+Epoch 39/9999 - loss: 0.4639 - accuracy: 0.7799 - val_loss: 0.3630 - val_accuracy: 0.8597 - lr: 1.42e-04
+Epoch 40/9999 - loss: 0.4635 - accuracy: 0.7802 - val_loss: 0.3635 - val_accuracy: 0.8607 - lr: 1.35e-04
+Epoch 41/9999 - loss: 0.4634 - accuracy: 0.7803 - val_loss: 0.3584 - val_accuracy: 0.8627 - lr: 1.29e-04
+Epoch 42/9999 - loss: 0.4629 - accuracy: 0.7806 - val_loss: 0.3636 - val_accuracy: 0.8582 - lr: 1.22e-04
+Epoch 43/9999 - loss: 0.4627 - accuracy: 0.7807 - val_loss: 0.3602 - val_accuracy: 0.8604 - lr: 1.16e-04
+Epoch 44/9999 - loss: 0.4622 - accuracy: 0.7811 - val_loss: 0.3626 - val_accuracy: 0.8600 - lr: 1.10e-04
+Epoch 45/9999 - loss: 0.4621 - accuracy: 0.7812 - val_loss: 0.3623 - val_accuracy: 0.8582 - lr: 1.05e-04
+Epoch 46/9999 - loss: 0.4619 - accuracy: 0.7812 - val_loss: 0.3607 - val_accuracy: 0.8612 - lr: 9.94e-05
+Epoch 47/9999 - loss: 0.4618 - accuracy: 0.7815 - val_loss: 0.3573 - val_accuracy: 0.8618 - lr: 9.45e-05
+Epoch 48/9999 - loss: 0.4613 - accuracy: 0.7817 - val_loss: 0.3589 - val_accuracy: 0.8636 - lr: 8.97e-05
+Epoch 49/9999 - loss: 0.4613 - accuracy: 0.7817 - val_loss: 0.3583 - val_accuracy: 0.8621 - lr: 8.53e-05
+Epoch 50/9999 - loss: 0.4611 - accuracy: 0.7817 - val_loss: 0.3612 - val_accuracy: 0.8604 - lr: 8.10e-05
+Epoch 51/9999 - loss: 0.4610 - accuracy: 0.7818 - val_loss: 0.3594 - val_accuracy: 0.8602 - lr: 7.69e-05
+Epoch 52/9999 - loss: 0.4605 - accuracy: 0.7822 - val_loss: 0.3617 - val_accuracy: 0.8596 - lr: 7.31e-05
+Epoch 53/9999 - loss: 0.4605 - accuracy: 0.7823 - val_loss: 0.3615 - val_accuracy: 0.8606 - lr: 6.94e-05
+Epoch 54/9999 - loss: 0.4602 - accuracy: 0.7822 - val_loss: 0.3608 - val_accuracy: 0.8602 - lr: 6.60e-05
+Epoch 55/9999 - loss: 0.4602 - accuracy: 0.7824 - val_loss: 0.3597 - val_accuracy: 0.8610 - lr: 6.27e-05
+Epoch 56/9999 - loss: 0.4599 - accuracy: 0.7826 - val_loss: 0.3588 - val_accuracy: 0.8617 - lr: 5.95e-05
+Epoch 57/9999 - loss: 0.4599 - accuracy: 0.7826 - val_loss: 0.3577 - val_accuracy: 0.8645 - lr: 5.66e-05
+Epoch 58/9999 - loss: 0.4599 - accuracy: 0.7825 - val_loss: 0.3567 - val_accuracy: 0.8631 - lr: 5.37e-05
+Epoch 59/9999 - loss: 0.4594 - accuracy: 0.7830 - val_loss: 0.3564 - val_accuracy: 0.8641 - lr: 5.10e-05
+Epoch 60/9999 - loss: 0.4596 - accuracy: 0.7827 - val_loss: 0.3585 - val_accuracy: 0.8624 - lr: 4.85e-05
+Epoch 61/9999 - loss: 0.4593 - accuracy: 0.7829 - val_loss: 0.3590 - val_accuracy: 0.8606 - lr: 4.61e-05
+Epoch 62/9999 - loss: 0.4593 - accuracy: 0.7829 - val_loss: 0.3574 - val_accuracy: 0.8636 - lr: 4.38e-05
+Epoch 63/9999 - loss: 0.4590 - accuracy: 0.7832 - val_loss: 0.3551 - val_accuracy: 0.8637 - lr: 4.16e-05
+Epoch 64/9999 - loss: 0.4592 - accuracy: 0.7831 - val_loss: 0.3629 - val_accuracy: 0.8585 - lr: 3.95e-05
+Epoch 65/9999 - loss: 0.4588 - accuracy: 0.7834 - val_loss: 0.3544 - val_accuracy: 0.8660 - lr: 3.75e-05
+Epoch 66/9999 - loss: 0.4587 - accuracy: 0.7833 - val_loss: 0.3566 - val_accuracy: 0.8634 - lr: 3.56e-05
+Epoch 67/9999 - loss: 0.4588 - accuracy: 0.7833 - val_loss: 0.3550 - val_accuracy: 0.8645 - lr: 3.39e-05
+Epoch 68/9999 - loss: 0.4589 - accuracy: 0.7832 - val_loss: 0.3515 - val_accuracy: 0.8672 - lr: 3.22e-05
+Epoch 69/9999 - loss: 0.4586 - accuracy: 0.7834 - val_loss: 0.3557 - val_accuracy: 0.8637 - lr: 3.06e-05
+Epoch 70/9999 - loss: 0.4583 - accuracy: 0.7836 - val_loss: 0.3581 - val_accuracy: 0.8626 - lr: 2.90e-05
+Epoch 71/9999 - loss: 0.4584 - accuracy: 0.7836 - val_loss: 0.3544 - val_accuracy: 0.8658 - lr: 2.76e-05
+Epoch 72/9999 - loss: 0.4584 - accuracy: 0.7836 - val_loss: 0.3542 - val_accuracy: 0.8642 - lr: 2.62e-05
+Epoch 73/9999 - loss: 0.4586 - accuracy: 0.7836 - val_loss: 0.3548 - val_accuracy: 0.8641 - lr: 2.49e-05
+Epoch 74/9999 - loss: 0.4584 - accuracy: 0.7837 - val_loss: 0.3556 - val_accuracy: 0.8643 - lr: 2.36e-05
+Epoch 75/9999 - loss: 0.4583 - accuracy: 0.7836 - val_loss: 0.3548 - val_accuracy: 0.8649 - lr: 2.25e-05
+Epoch 76/9999 - loss: 0.4584 - accuracy: 0.7836 - val_loss: 0.3519 - val_accuracy: 0.8664 - lr: 2.13e-05
+Epoch 77/9999 - loss: 0.4581 - accuracy: 0.7837 - val_loss: 0.3561 - val_accuracy: 0.8642 - lr: 2.03e-05
+  Gamma reduced to 0.90
+Epoch 78/9999 - loss: 0.4582 - accuracy: 0.7835 - val_loss: 0.3566 - val_accuracy: 0.8620 - lr: 1.93e-05
+Epoch 79/9999 - loss: 0.4582 - accuracy: 0.7835 - val_loss: 0.3558 - val_accuracy: 0.8643 - lr: 1.83e-05
+Epoch 80/9999 - loss: 0.4581 - accuracy: 0.7837 - val_loss: 0.3563 - val_accuracy: 0.8642 - lr: 1.65e-05
+Epoch 81/9999 - loss: 0.4580 - accuracy: 0.7840 - val_loss: 0.3552 - val_accuracy: 0.8640 - lr: 1.48e-05
+Epoch 82/9999 - loss: 0.4580 - accuracy: 0.7839 - val_loss: 0.3532 - val_accuracy: 0.8671 - lr: 1.33e-05
+Epoch 83/9999 - loss: 0.4577 - accuracy: 0.7840 - val_loss: 0.3554 - val_accuracy: 0.8640 - lr: 1.20e-05
+Epoch 84/9999 - loss: 0.4576 - accuracy: 0.7842 - val_loss: 0.3568 - val_accuracy: 0.8636 - lr: 1.08e-05
+Epoch 85/9999 - loss: 0.4580 - accuracy: 0.7839 - val_loss: 0.3546 - val_accuracy: 0.8644 - lr: 9.73e-06
+Epoch 86/9999 - loss: 0.4579 - accuracy: 0.7840 - val_loss: 0.3568 - val_accuracy: 0.8641 - lr: 8.75e-06
+Epoch 87/9999 - loss: 0.4575 - accuracy: 0.7842 - val_loss: 0.3535 - val_accuracy: 0.8649 - lr: 7.88e-06
+  Gamma reduced to 0.85
+Epoch 88/9999 - loss: 0.4577 - accuracy: 0.7839 - val_loss: 0.3536 - val_accuracy: 0.8655 - lr: 7.09e-06
+Epoch 89/9999 - loss: 0.4576 - accuracy: 0.7839 - val_loss: 0.3557 - val_accuracy: 0.8630 - lr: 6.38e-06
+Epoch 90/9999 - loss: 0.4577 - accuracy: 0.7841 - val_loss: 0.3535 - val_accuracy: 0.8648 - lr: 5.42e-06
+Epoch 91/9999 - loss: 0.4575 - accuracy: 0.7842 - val_loss: 0.3540 - val_accuracy: 0.8644 - lr: 4.61e-06
+Epoch 92/9999 - loss: 0.4576 - accuracy: 0.7840 - val_loss: 0.3570 - val_accuracy: 0.8633 - lr: 3.92e-06
+Epoch 93/9999 - loss: 0.4578 - accuracy: 0.7839 - val_loss: 0.3538 - val_accuracy: 0.8650 - lr: 3.33e-06
+Epoch 94/9999 - loss: 0.4575 - accuracy: 0.7842 - val_loss: 0.3536 - val_accuracy: 0.8663 - lr: 2.83e-06
+Epoch 95/9999 - loss: 0.4576 - accuracy: 0.7841 - val_loss: 0.3537 - val_accuracy: 0.8649 - lr: 2.41e-06
+Epoch 96/9999 - loss: 0.4574 - accuracy: 0.7842 - val_loss: 0.3521 - val_accuracy: 0.8660 - lr: 2.05e-06
+Epoch 97/9999 - loss: 0.4575 - accuracy: 0.7842 - val_loss: 0.3563 - val_accuracy: 0.8616 - lr: 1.74e-06
+  Gamma reduced to 0.80
+Epoch 98/9999 - loss: 0.4574 - accuracy: 0.7842 - val_loss: 0.3516 - val_accuracy: 0.8670 - lr: 1.48e-06
+Early stopping triggered at epoch 98 (patience 30)
+Model weights saved to /eos/user/a/amorandi/HH4b/FFN_cat_embedding/weights/flow_model.pt
+  Plot saved: training_validation_metrics.png
+  Plot saved: lr_evolution.png
+Model weights loaded from /eos/user/a/amorandi/HH4b/FFN_cat_embedding/weights/flow_model.pt

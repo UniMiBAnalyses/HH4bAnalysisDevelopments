@@ -1,0 +1,86 @@
+==========================================
+Job started at: Sun Mar  8 11:46:47 AM CET 2026
+Running on host: b9pgpun002.cern.ch
+Working directory: /pool/condor/dir_2985717
+Training: main_cathegorical_embedding.py
+==========================================
+GPU Information on the node:
+Sun Mar  8 11:46:47 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:3A:00.0 Off |                    0 |
+| N/A   33C    P0             62W /  400W |      26MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+==========================================
+Starting training at: Sun Mar  8 11:46:47 AM CET 2026
+==========================================
+Inside container:
+Python version: Python 3.9.21
+PyTorch version: 2.6.0+cu124
+GPU devices available: 1
+GPU details: ['NVIDIA H100 NVL']
+
+Installing required packages...
+Packages installed.
+
+Shape before bootstrapping: 2b=(5187675, 36), 4b=(94974, 36)
+Shape after bootstrapping: 2b=(5187675, 36), 4b=(5187675, 36)
+Final data shape: X=(10375350, 36), y=(10375350, 1)
+era: min=0, max=1
+njet (remapped): min=0, max=12
+  Total input dimension after embedding: 44 (Continuous: 34, Categorical: 2 with embedding dim 5)
+
+============================================================
+FFNEmbeddingNetwork(
+  (embeddings): ModuleList(
+    (0): Embedding(2, 5)
+    (1): Embedding(12, 5)
+  )
+  (embedding_batch_norm): BatchNorm1d(10, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (input_batch_norm): BatchNorm1d(44, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (network): Sequential(
+    (0): Linear(in_features=44, out_features=512, bias=True)
+    (1): GELU(approximate='none')
+    (2): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): Dropout(p=0.2, inplace=False)
+    (4): Linear(in_features=512, out_features=256, bias=True)
+    (5): GELU(approximate='none')
+    (6): BatchNorm1d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (7): Dropout(p=0.2, inplace=False)
+    (8): Linear(in_features=256, out_features=128, bias=True)
+    (9): GELU(approximate='none')
+    (10): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): Dropout(p=0.2, inplace=False)
+    (12): Linear(in_features=128, out_features=64, bias=True)
+    (13): GELU(approximate='none')
+    (14): BatchNorm1d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (15): Dropout(p=0.2, inplace=False)
+    (16): Linear(in_features=64, out_features=2, bias=True)
+  )
+)
+============================================================
+Total parameters: 197,748
+Trainable parameters: 197,748
+Continuous features: 34
+Categorical features: 2
+Embedding dimension: 5
+Categorical dimensions: [2, 12]
+Embedding noise std: 0.1
+
+Starting training...
+Starting training...

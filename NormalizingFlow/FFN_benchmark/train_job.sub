@@ -1,0 +1,84 @@
+# =============================================================================
+# HTCONDOR SUBMIT FILE FOR NN TRAINING
+# =============================================================================
+# This file tells HTCondor how to run your job on the CERN batch system.
+# Submit with: condor_submit train_job.sub
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# BASIC JOB CONFIGURATION
+# -----------------------------------------------------------------------------
+# The universe defines the execution environment. 'vanilla' is the standard one.
+universe = vanilla
+
+# The executable is the shell script that will be run on the worker node
+executable = run_training_FFN.sh
+
+# Arguments will be set per job in the queue section
+arguments = $(mainfile)
+
+# -----------------------------------------------------------------------------
+# OUTPUT AND LOG FILES
+# -----------------------------------------------------------------------------
+# These files capture the job's output:
+# - output: Standard output (stdout) from your script
+# - error:  Standard error (stderr) from your script  
+# - log:    HTCondor's log of job status changes (submitted, running, completed)
+#
+# $(ClusterId) is the unique job cluster number assigned by HTCondor
+# $(ProcId) is the process ID within the cluster
+# $(jobname) is a custom variable we define per job
+
+output = logs/train_$(jobname).$(ClusterId).$(ProcId).out
+error  = logs/train_$(jobname).$(ClusterId).$(ProcId).err
+log    = logs/train_$(jobname).$(ClusterId).log
+
+# -----------------------------------------------------------------------------
+# JOB FLAVOUR (TIME LIMIT)
+# -----------------------------------------------------------------------------
+# The job flavour sets the maximum runtime. Available flavours:
+#   espresso     = 20 minutes
+#   microcentury = 1 hour
+#   longlunch    = 2 hours
+#   workday      = 8 hours
+#   tomorrow     = 1 day (24 hours)
+#   testmatch    = 3 days
+#   nextweek     = 1 week
+#
+# For ~20 hours of training, use 'tomorrow' (24h) or 'testmatch' (3 days) to be safe
++JobFlavour = "workday"
+
+# Alternative: Set exact runtime in seconds (20h = 72000s, adding buffer = 86400s)
+# +MaxRuntime = 86400
+
+# -----------------------------------------------------------------------------
+# RESOURCE REQUESTS
+# -----------------------------------------------------------------------------
+# Request GPU for neural network training
+request_gpus = 1
+
+# Request CPUs to support the GPU (typically 4-8 cores per GPU)
+RequestCpus = 4
+
+# This gives you 1 GPU, 4 CPUs and 12GB of RAM (4 x 3GB)
+# GPU memory is separate and depends on the card type
+
+# -----------------------------------------------------------------------------
+# OPERATING SYSTEM & GPU REQUIREMENTS
+# -----------------------------------------------------------------------------
+# Request AlmaLinux 9 (current default at CERN)
+MY.WantOS = "el9"
+
+# GPU requirements: No restrictions - accept any available GPU
+# This includes V100, V100S, A100, H100, H200, T4, P100, and H100L MIG instances
+# Total pool: ~254 GPUs
+
+# -----------------------------------------------------------------------------
+# QUEUE THE JOBS
+# -----------------------------------------------------------------------------
+# Queue FFN training jobs
+
+# FFN model training with categorical embeddings (era and njet)
+jobname = FFN_Embedding
+mainfile = main_cathegorical_embedding.py
+queue

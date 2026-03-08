@@ -1,0 +1,52 @@
+==========================================
+Job started at: Sun Mar  8 01:05:24 PM CET 2026
+Running on host: b9pgpun218.cern.ch
+Working directory: /pool/condor/dir_1336043
+Training: main_phi.py
+==========================================
+GPU Information on the node:
+Sun Mar  8 13:05:24 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.126.09             Driver Version: 580.126.09     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100L-2-24C             On  |   00000000:06:00.0 Off |                   On |
+| N/A   N/A    P0            N/A  /  N/A  |       1MiB /  24576MiB |     N/A      Default |
+|                                         |                        |              Enabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| MIG devices:                                                                            |
++------------------+----------------------------------+-----------+-----------------------+
+| GPU  GI  CI  MIG |              Shared Memory-Usage |        Vol|        Shared         |
+|      ID  ID  Dev |                Shared BAR1-Usage | SM     Unc| CE ENC  DEC  OFA  JPG |
+|                  |                                  |        ECC|                       |
+|==================+==================================+===========+=======================|
+|  0    0   0   0  |               1MiB / 21547MiB    | 32      0 |  2   0    2    0    2 |
+|                  |               0MiB /  4096MiB    |           |                       |
++------------------+----------------------------------+-----------+-----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+==========================================
+Starting training at: Sun Mar  8 01:05:24 PM CET 2026
+==========================================
+Inside container:
+Python version: Python 3.9.21
+PyTorch version: 2.6.0+cu124
+CUDA available: True
+CUDA device count: 1
+GPU name: NVIDIA H100L-2-24C MIG 2g.24gb
+
+Installing required packages...
+Packages installed.
+
