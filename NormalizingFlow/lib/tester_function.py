@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report, confusion_matrix
 from scipy.stats import norm, ks_2samp
-from . import data_loader as dl
+import data_loader as dl
 from tqdm import tqdm
 import os
 
@@ -13,11 +13,12 @@ import os
 # Basic utility functions
 # =========================================================================
 
-def number_of_bins(samples):
+def number_of_bins(samples, NN_type='NF'):
     """
     Freedman-Diaconis rule to determine optimal number of bins for histogram.
 
     param samples: array-like, samples from which to determine the number of bins
+    param NN_type: str, type of neural network used ('NF' or 'FFN'), default='NF'
     return: int, optimal number of bins
     """
     samples = np.asarray(samples)
@@ -27,7 +28,10 @@ def number_of_bins(samples):
     if bin_width == 0:
         return int(np.sqrt(len(samples)/2))
     else:
-        return int((samples.max() - samples.min()) / (2*bin_width))
+        if NN_type == "NF":
+            return int((samples.max() - samples.min()) / bin_width)
+        if NN_type == "FFN":
+            return int((samples.max() - samples.min()) /(2 * bin_width))
 
 
 # =========================================================================
@@ -117,7 +121,7 @@ def ConfusionMatrix(y_true, y_rec, filename):
 
 
 def perform_binary_classification_analysis(scores_test, y_test, 
-                                          method_name, dir_path, xlabel, 
+                                          method_name, dir_path, xlabel, NN_type,
                                           use_threshold_for_prediction=True):
     """
     Perform comprehensive binary classification analysis for a given scoring method.
@@ -127,6 +131,7 @@ def perform_binary_classification_analysis(scores_test, y_test,
     param method_name: str, name of the classification method (e.g., "Likelihood Ratio")
     param dir_path: str, directory path for saving plots
     param xlabel: str, x-axis label for distribution plot
+    param NN_type: str, type of neural network ('NF' or 'FFN')
     param use_threshold_for_prediction: bool, if True use optimal threshold, else use 0.5
     
     return: dict with keys 'roc_auc_test', 'accuracy_test', 'optimal_threshold_test'
@@ -159,9 +164,9 @@ def perform_binary_classification_analysis(scores_test, y_test,
     
     # Plot score distribution
     plt.figure(figsize=(8, 6))
-    plt.hist(scores_test[y_test == 0], bins=number_of_bins(scores_test[y_test == 0]),
+    plt.hist(scores_test[y_test == 0], bins=number_of_bins(scores_test[y_test == 0], NN_type),
              histtype='step', label='2b events', color='blue')
-    plt.hist(scores_test[y_test == 1], bins=number_of_bins(scores_test[y_test == 1]),
+    plt.hist(scores_test[y_test == 1], bins=number_of_bins(scores_test[y_test == 1], NN_type),
              histtype='step', label='4b events', color='red')
     plt.axvline(optimal_threshold_test, color='black', linestyle='--', linewidth=2, 
                 label='Optimal threshold')
@@ -429,7 +434,7 @@ def create_summary_bar_plot(data_dict, features_list, title, ylabel, filename,
     plt.close()
 
 
-def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_path_base, 
+def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_path_base, NN_type,
                                            target_name="Target", compute_chi2_2b=False):
     """
     Light version of distribution comparison analysis.
@@ -441,6 +446,7 @@ def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_p
     param X_target: torch.Tensor or np.ndarray, generated/reconstructed distribution to compare against X_4b
     param features: list of str, feature names for labeling plots
     param dir_path_base: str, base directory for saving summary plots
+    param NN_type: str, type of neural network ('NF' or 'FFN')
     param target_name: str, name for the target distribution (e.g., "Reco 4b", "Sampled 4b")
     param compute_chi2_2b: bool, whether to compute chi2 between 2b and target (requires X_2b)
     
@@ -658,7 +664,7 @@ def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_p
     }
 
 
-def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_base, 
+def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_base, NN_type,
                                      include_residue_analysis=True, include_scatter_plots=True,
                                      target_name="Target", paired_with_2b=False):
     """
@@ -675,6 +681,7 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
     param X_target: torch.Tensor or np.ndarray, generated/reconstructed distribution to compare against X_4b
     param features: list of str, feature names for labeling plots
     param dir_path_base: str, base directory for saving plots
+    param NN_type: str, type of neural network ('NF' or 'FFN')
     param include_residue_analysis: bool, whether to include residue difference analysis (requires X_2b)
     param include_scatter_plots: bool, whether to include scatter and QQ plots
     param target_name: str, name for the target distribution (e.g., "Reco 4b", "Sampled 4b")
@@ -755,7 +762,7 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
         X_target_feature_clean = X_target_feature[valid_mask]
         
         # Calculate histogram bins based on real 4b data
-        bins = number_of_bins(X_4b_feature)
+        bins = number_of_bins(X_4b_feature, NN_type)
         
         # Calculate histograms for 4b and target
         X_4b_raw, bin_edges = np.histogram(X_4b_feature, bins=bins)

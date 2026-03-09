@@ -1,0 +1,25 @@
+cat << 'EOF' > .gitignore
+# Cache di Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Log di Condor e di sistema
+*.err
+*.out
+*.log
+
+# Modelli salvati (come da indicazioni di Raffaele)
+*.pt
+*.pth
+*.h5
+*.pkl
+
+# File di dati ROOT
+*.root
+
+# Grafici e Plot
+*.png
+*.pdf
+*.jpg
+EOF

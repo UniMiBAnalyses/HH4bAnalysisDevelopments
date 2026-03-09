@@ -1,19 +1,0 @@
-
-[notice] A new release of pip is available: 25.0.1 -> 26.0.1
-[notice] To update, run: pip install --upgrade pip
-Processing features:   0%|          | 0/36 [00:00<?, ?it/s]Processing features: 100%|██████████| 36/36 [00:00<00:00, 476324.74it/s]
-Epoch 1/9999 [Train]:   0%|          | 0/15199 [00:00<?, ?it/s]Epoch 1/9999 [Train]:   0%|          | 1/15199 [00:00<2:47:28,  1.51it/s]/pytorch/aten/src/ATen/native/cuda/Indexing.cu:1422: indexSelectLargeIndex: block: [18,0,0], thread: [16,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
-/pytorch/aten/src/ATen/native/cuda/Indexing.cu:1422: indexSelectLargeIndex: block: [18,0,0], thread: [17,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
-/pytorch/aten/src/ATen/native/cuda/Indexing.cu:1422: indexSelectLargeIndex: block: [18,0,0], thread: [18,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
-/pytorch/aten/src/ATen/native/cuda/Indexing.cu:1422: indexSelectLargeIndex: block: [18,0,0], thread: [19,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
-/pytorch/aten/src/ATen/native/cuda/Indexing.cu:1422: indexSelectLargeIndex: block: [18,0,0], thread: [20,0,0] Assertion `srcIndex < srcSelectDimSize` failed.
-                                                                         Traceback (most recent call last):
-  File "/afs/cern.ch/user/a/amorandi/private/HH4b/FFN/main_cathegorical_embedding.py", line 86, in <module>
-    model.train(train_data, val_data, epochs=9999, batch_size=512)
-  File "/afs/cern.ch/user/a/amorandi/private/HH4b/FFN/model.py", line 255, in train
-    running_loss += loss.item() * batch_X.size(0)
-RuntimeError: CUDA error: device-side assert triggered
-CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
-For debugging consider passing CUDA_LAUNCH_BLOCKING=1
-Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
-

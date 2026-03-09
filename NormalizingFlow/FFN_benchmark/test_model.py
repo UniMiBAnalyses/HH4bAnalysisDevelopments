@@ -220,7 +220,8 @@ class FFNModelTester:
             y_test=y_test_np,
             method_name="FFN Classifier",
             dir_path=dir_path_classification,
-            xlabel='Log-Likelihood Ratio log(P(4b|X)/P(2b|X))'
+            xlabel='Log-Likelihood Ratio log(P(4b|X)/P(2b|X))',
+            NN_type='FFN'
         )
         
         print("\nClassification visualization completed")
@@ -360,6 +361,7 @@ class FFNModelTester:
                 X_target=X_4b_reco,
                 features=self.features,
                 dir_path_base=dir_path_reweight,
+                NN_type='FFN',
                 target_name="Reco 4b",
                 compute_chi2_2b=True
             )
@@ -370,7 +372,8 @@ class FFNModelTester:
                 X_4b=X_4b,
                 X_target=X_4b_reco,
                 features=self.features,
-                dir_path_base=dir_path_reweight, 
+                dir_path_base=dir_path_reweight,
+                NN_type='FFN',
                 include_residue_analysis=True,
                 include_scatter_plots=True,
                 target_name="Reco 4b",

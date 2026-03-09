@@ -7,8 +7,7 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-
-from . import tester_function as tf
+import tester_function as tf
 
 
 path_CR2b_2022EE = "/eos/cms/store/group/phys_smp/rgerosa/HH4b/analysis_2022_ParkingHH/2b_control_region_only/data_2022EE.root"
@@ -380,4 +379,4 @@ features = [
 
 if __name__ == "__main__":
     path_plot = '/eos/user/a/amorandi/HH4b/data_preprocessing/'
-    data_preparation(bootstrap_coef_2b=1, bootstrap_coef_4b=None, features=features, reshaping_plot_path=path_plot + 'reshaping/', mirroring_plot_path=path_plot + 'mirroring/', scaler_plot_path=path_plot + 'scaler/')
+    data_preparation(bootstrap_coef_2b=1, bootstrap_coef_4b=None, features=features, reshaping_plot_path=path_plot + 'reshaping/', scaler_plot_path=path_plot + 'scaler/')

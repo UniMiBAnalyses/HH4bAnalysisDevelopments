@@ -232,7 +232,8 @@ class ModelTester:
             y_test=y_test_np,
             method_name="Likelihood Ratio",
             dir_path=dir_path_classification,
-            xlabel='Log Likelihood Ratio log[P(X|4b) / P(X|2b)]'
+            xlabel='Log Likelihood Ratio log[P(X|4b) / P(X|2b)]',
+            NN_type='NF'
         )
         
         print("\nClassification visualization completed")
@@ -374,6 +375,7 @@ class ModelTester:
             X_target=samples_4b,
             features=self.features,
             dir_path_base=dir_path_sampling,
+            NN_type='NF',
             include_residue_analysis=True,
             include_scatter_plots=True,
             target_name="Sampled 4b",
@@ -628,6 +630,7 @@ class ModelTester:
                 X_target=X_reco_4b,
                 features=self.features,
                 dir_path_base=dir_path_latent,
+                NN_type='NF',
                 target_name="Reco 4b",
                 compute_chi2_2b=True
             )
@@ -639,6 +642,7 @@ class ModelTester:
                 X_target=X_reco_4b,
                 features=self.features,
                 dir_path_base=dir_path_latent,
+                NN_type='NF',
                 include_residue_analysis=True,
                 include_scatter_plots=True,
                 target_name="Reco 4b",
