@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import seaborn as sns
 from tqdm import tqdm
 import os
 import sys
@@ -25,7 +26,8 @@ from lib.tester_function import (
     create_summary_bar_plot,
     distribution_comparison_analysis,
     distribution_comparison_analysis_light,
-    latent_space_normality_analysis
+    latent_space_normality_analysis,
+    plot_reweighting_patterns
 )
 
 
@@ -716,15 +718,14 @@ class ModelTester:
         # Compute weights, avoiding inf/-inf
         valid_mask = (log_prob_2b != -np.inf) & (log_prob_2b != np.inf)
         events_2b = events_2b[valid_mask]
-        weights_preclip = np.exp(log_prob_4b[valid_mask] - log_prob_2b[valid_mask])
-        weights = np.clip(weights_preclip, 0, 10)  # Clip to (0, 10)
+        weights = np.exp(log_prob_4b[valid_mask] - log_prob_2b[valid_mask])
         
         if len(features) == 0:
             features = [f for f in self.features if f != 'era']
         
         print(f"\nAnalyzing {len(features)} features...")
         print(f"Number of 2b events: {len(events_2b)}")
-        print(f"Weight statistics: min={weights.min():.4f}, max={weights.max():.4f}, "
+        print(f"Weight statistics (post-clip): min={weights.min():.4f}, max={weights.max():.4f}, "
               f"mean={weights.mean():.4f}, median={np.median(weights):.4f}")
         
         # =======================================================================
@@ -753,10 +754,6 @@ class ModelTester:
         param h5_filename: Name of the h5 file to load (without extension)
         param window_size: window size for moving average (to show trend in scatter plot)
         """
-        print("\n" + "="*60)
-        print("Reweighting Pattern Analysis - VISUALIZATION PHASE")
-        print("="*60)
-        
         # =======================================================================
         # Load pre-computed data
         # =======================================================================
@@ -765,60 +762,18 @@ class ModelTester:
         events_2b = data['events_2b']
         weights = data['weights']
         
-        # Handle features - decode ASCII bytes back to strings, or use default if key missing
-        if 'features_analyzed' in data:
-            features = [f.decode('utf-8') if isinstance(f, bytes) else f for f in data['features_analyzed']]
-        else:
-            # Fallback for old h5 files without features_analyzed key
-            print("[WARNING] 'features_analyzed' not found in h5 file. Using all features except 'era'.")
-            features = [f for f in self.features if f != 'era']
+        features = [f for f in self.features if f != 'era']
         
-        # Setup directories
-        dir_path_weights = self.dir_path + 'weights_analysis/'
-        os.makedirs(dir_path_weights, exist_ok=True)
+        # Use common visualization function from tester_function
+        plot_reweighting_patterns(
+            events_2b=events_2b,
+            weights=weights,
+            features_to_analyze=features,
+            all_features=self.features,
+            dir_path=self.dir_path,
+            window_size=window_size
+        )
         
-        # Weights are already clipped to (0, 10) in evaluation phase
-        print(f"\nWeight statistics: min={weights.min():.4f}, max={weights.max():.4f}, "
-              f"mean={weights.mean():.4f}, median={np.median(weights):.4f}")
-        
-        print(f"\nGenerating scatter plots for {len(features)} features...")
-        
-        for i, feature in enumerate(tqdm(features, desc="Scatter plots")):
-            feature_idx = self.features.index(feature)
-            feature_values = events_2b[:, feature_idx]
-            
-            fig, ax = plt.subplots(figsize=(12, 7))
-            
-            # Hexbin plot with colorbar to show density on z-axis
-            hexbin = ax.hexbin(feature_values, weights, gridsize=50, cmap='viridis', 
-                              mincnt=1, alpha=0.8, linewidths=0.2)
-            cbar = plt.colorbar(hexbin, ax=ax, label='Point density')
-            
-            # Red line at y = 1
-            ax.axhline(y=1, color='red', linestyle='--', linewidth=2, label='Reference weight (w = 1)')
-            
-            # Moving average to show trend
-            sorted_idx = np.argsort(feature_values)
-            if len(feature_values) > window_size:
-                # Use convolution for moving average, so we obtain a smoother curve with window_size - 1 points
-                moving_avg = np.convolve(weights[sorted_idx], np.ones(window_size)/window_size, mode='valid')
-                x_smooth = feature_values[sorted_idx][window_size-1:]
-                ax.plot(x_smooth, moving_avg, color='red', linewidth=2.5, label=f'Moving average (window={window_size})')
-            
-            ax.set_xlabel(f'{feature}', fontsize=11)
-            ax.set_ylabel('Weight', fontsize=11)
-            ax.set_title(f'Reweighting Pattern: {feature}', fontsize=13, fontweight='bold')
-            ax.set_ylim(0, 10)  # Set y-axis limits to match clipping range
-            ax.grid(alpha=0.3, which='both')
-            ax.legend(fontsize=10)
-            
-            plt.tight_layout()
-            plt.savefig(dir_path_weights + f'weight_pattern_{feature}.png', 
-                        dpi=150, bbox_inches='tight')
-            plt.close()
-        
-        print(f"\n  Plots saved in: {dir_path_weights}")
-        print("\nReweighting pattern visualization completed")
         return 0
 
 
@@ -843,3 +798,173 @@ class ModelTester:
         return 0
 
 
+# =========================================================================
+    # EVENT-BY-EVENT FEATURE SHIFT ANALYSIS (RESIDUALS)
+    # =========================================================================
+
+    def evaluate_feature_shifts(self, data_test_prebootstrap, h5_filename='feature_shifts', batch_size=1024):
+        """
+        EVALUATION: Calculate event-by-event shifts (residuals) applied by the flow.
+        Saves original 2b, transformed 4b, and their residuals to HDF5.
+        """
+        print("\n" + "="*60)
+        print("Event-by-Event Feature Shifts - EVALUATION PHASE")
+        print("="*60)
+
+        # 1. Get real 2b data
+        X_2b, _ = data_preparing_for_comparison(data_test_prebootstrap)
+        
+        print(f"\nTransforming {X_2b.shape[0]} 2b events to 4b to calculate residuals...")
+        
+        # 2. Process in batches to get X_reco_4b
+        n_batches = (X_2b.shape[0] + batch_size - 1) // batch_size
+        X_reco_4b_batches = []
+
+        for batch_idx in tqdm(range(n_batches), desc="Processing batches"):
+            start_idx = batch_idx * batch_size
+            end_idx = min((batch_idx + 1) * batch_size, X_2b.shape[0])
+            X_2b_batch = X_2b[start_idx:end_idx].to(self.device)
+            
+            with torch.no_grad():
+                # Encode 2b
+                condition_2b = torch.zeros(X_2b_batch.shape[0], 1, dtype=torch.float32).to(self.device)
+                z = self.model.transform_feature_to_latent(X_2b_batch, condition_2b)
+                
+                # Decode to 4b
+                condition_4b = torch.ones(X_2b_batch.shape[0], 1, dtype=torch.float32).to(self.device)
+                X_reco_4b_batch = self.model.transform_latent_to_feature(z, condition_4b)
+            
+            X_reco_4b_batches.append(X_reco_4b_batch.cpu())
+            
+        X_reco_4b = torch.cat(X_reco_4b_batches, dim=0)
+        
+        # Convert to numpy
+        if torch.is_tensor(X_2b):
+            X_2b = X_2b.cpu().numpy()
+        X_reco_4b = X_reco_4b.numpy()
+
+        # 3. Calculate Residuals (Transformed - Original)
+        residuals = X_reco_4b - X_2b
+
+        # 4. Save to HDF5
+        shift_data = {
+            'X_2b': X_2b,
+            'X_reco_4b': X_reco_4b,
+            'residuals': residuals
+        }
+        
+        self._save_to_h5(h5_filename, shift_data)
+        print("\nFeature shift evaluation completed")
+        return 0
+
+
+    def visualize_feature_shifts(self, h5_filename='feature_shifts'):
+        """
+        VISUALIZATION: Plot 1D residual distributions and 2D correlation maps.
+        Loads data from HDF5.
+        """
+        print("\n" + "="*60)
+        print("Event-by-Event Feature Shifts - VISUALIZATION PHASE")
+        print("="*60)
+
+        # Load data
+        data = self._load_from_h5(h5_filename)
+        X_2b = data['X_2b']
+        X_reco_4b = data['X_reco_4b']
+        residuals = data['residuals']
+
+        dir_path_shifts = self.dir_path + 'feature_shifts/'
+        os.makedirs(dir_path_shifts, exist_ok=True)
+        dir_path_residuals = dir_path_shifts + 'residuals/'
+        os.makedirs(dir_path_residuals, exist_ok=True)
+
+        means = {}
+        stds = {}
+
+        print("\nGenerating residual and 2D mapping plots for each feature...")
+        
+        for i, feature_name in enumerate(tqdm(self.features)):
+            # Skip categorical/era if you don't want to plot shifts for them
+            if feature_name in ['era', 'njet']:
+                continue
+
+            orig_vals = X_2b[:, i]
+            trans_vals = X_reco_4b[:, i]
+            res_vals = residuals[:, i]
+
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+            # --- Plot 1: 1D Histogram of Residuals ---
+            ax1.hist(res_vals, bins=number_of_bins(res_vals), color='purple', alpha=0.7)
+            ax1.set_title(f'Residuals for {feature_name}\n($\Delta x = \hat{{x}}_{{4b}} - x_{{2b}}$)')
+            ax1.set_xlabel('Shift applied by flow')
+            ax1.set_ylabel('Events')
+            ax1.set_xlim(-5, 5)
+            ax1.set_yscale('log')
+            ax1.grid(alpha=0.3)
+
+            mean = np.mean(res_vals)
+            std = np.std(res_vals)
+            means[feature_name] = mean
+            stds[feature_name] = std
+
+            # Add text box with stats
+            stats_text = f"Mean: {mean:.3f}\nStd: {std:.3f}"
+            ax1.text(0.05, 0.95, stats_text, transform=ax1.transAxes, fontsize=10,
+                     verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+            # --- Plot 2: 2D Hist (Original vs Transformed) ---
+            # Using hist2d instead of scatter because of high event count
+            h = ax2.hist2d(orig_vals, trans_vals, bins=60, cmap='viridis', cmin=1)
+            fig.colorbar(h[3], ax=ax2, label='Counts')
+            
+            # Draw a diagonal line y=x for reference (no shift line)
+            min_val = min(np.min(orig_vals), np.min(trans_vals))
+            max_val = max(np.max(orig_vals), np.max(trans_vals))
+            ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.7, label='y=x (No Shift)')
+            
+            ax2.set_title(f'Event Mapping: {feature_name}')
+            ax2.set_xlabel('Original 2b Value')
+            ax2.set_ylabel('Transformed 4b Value')
+            ax2.set_xlim(-5, 5)
+            ax2.set_ylim(-5, 5)
+            ax2.legend()
+            ax2.grid(alpha=0.3)
+
+            plt.tight_layout()
+            plt.savefig(os.path.join(dir_path_residuals, f'shift_{feature_name}.png'), dpi=150)
+            plt.close()
+        
+        create_summary_bar_plot(
+            data_dict=means,
+            features_list=self.features,
+            title=f'Mean Shifts Applied by Flow',
+            ylabel='Mean Shift',
+            filename=dir_path_shifts + 'mean_shifts.png',
+            color='blue'
+        )
+
+        create_summary_bar_plot(
+            data_dict=stds,
+            features_list=self.features,
+            title=f'Standard Deviation of Shifts Applied by Flow',
+            ylabel='Std of Shift',
+            filename=dir_path_shifts + 'std_shifts.png',
+            color='red'
+        )
+
+        print("\nFeature shift visualization completed")
+        return 0
+
+
+    def feature_shift_analysis(self, data_test_prebootstrap, h5_filename='feature_shifts', batch_size=1024, force_recompute=False):
+        """
+        COMBINED: Full event-by-event feature shift analysis.
+        """
+        if force_recompute or not self._check_eval_data_exists(h5_filename):
+            self.evaluate_feature_shifts(data_test_prebootstrap, h5_filename, batch_size)
+        else:
+            print("\n[INFO] Feature shift data found. Skipping evaluation. Use force_recompute=True to recompute.")
+        
+        self.visualize_feature_shifts(h5_filename)
+        return 0

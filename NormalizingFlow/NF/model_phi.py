@@ -171,6 +171,9 @@ class FlowModel:
         param batch_y: torch.Tensor, context labels
         return: torch.Tensor, computed loss
         """
+        if batch_y.dim() == 1:
+            batch_y = batch_y.unsqueeze(-1)
+
         if self.has_phi:
             x_non_phi, x_phi = self._split_phi(batch_X)
             
@@ -354,6 +357,9 @@ class FlowModel:
         self.flow.eval()
         X, condition = X.to(self.device), condition.to(self.device)
         
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+        
         with torch.no_grad():
             if self.has_phi:
                 self.phi_flow.eval()
@@ -387,6 +393,9 @@ class FlowModel:
         self.flow.eval()
         condition = condition.to(self.device)
         
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+        
         with torch.no_grad():
             if self.has_phi:
                 self.phi_flow.eval()
@@ -419,6 +428,9 @@ class FlowModel:
         self.flow.eval()
         X, condition = X.to(self.device), condition.to(self.device)
         
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+        
         with torch.no_grad():
             if self.has_phi:
                 self.phi_flow.eval()
@@ -450,6 +462,9 @@ class FlowModel:
         """
         self.flow.eval()
         z, condition = z.to(self.device), condition.to(self.device)
+        
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
         
         with torch.no_grad():
             if self.has_phi:

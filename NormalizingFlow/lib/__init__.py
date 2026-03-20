@@ -8,5 +8,6 @@ Contains:
 
 from . import data_loader
 from . import tester_function
+from . import features
 
-__all__ = ['data_loader', 'tester_function']
+__all__ = ['data_loader', 'tester_function', 'features']

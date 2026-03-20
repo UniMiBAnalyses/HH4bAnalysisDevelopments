@@ -155,6 +155,11 @@ class FlowModel:
         #   from which it can sample, and to which it can map inputs.
         #   This is the reason why we can study both 2b and 4b events.
         # log_prob computes log probability of batch_X under that distribution
+        
+        # Ensure batch_y has correct shape (Batch, context_dim)
+        if batch_y.dim() == 1:
+            batch_y = batch_y.unsqueeze(-1)
+            
         loss = -self.flow(batch_y).log_prob(batch_X).mean()
         return loss
         
@@ -309,6 +314,10 @@ class FlowModel:
         """
         self.flow.eval()
         X, condition = X.to(self.device), condition.to(self.device)
+        
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+            
         with torch.no_grad():
             log_prob = self.flow(condition).log_prob(X)
 
@@ -324,6 +333,10 @@ class FlowModel:
         """
         self.flow.eval()
         condition = condition.to(self.device) # Move the context vector to the appropriate CPU or GPU  
+        
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+            
         with torch.no_grad(): 
             samples = self.flow(condition).sample() # Sample from the distribution conditioned on the context
         return samples.cpu()
@@ -339,6 +352,10 @@ class FlowModel:
         """
         self.flow.eval()
         X, condition = X.to(self.device), condition.to(self.device)
+        
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+            
         with torch.no_grad():
             z = self.flow(condition).transform(X) # Transform input data to latent space conditioned on context
         return z.cpu()
@@ -354,6 +371,10 @@ class FlowModel:
         """
         self.flow.eval()
         z, condition = z.to(self.device), condition.to(self.device)
+        
+        if condition.dim() == 1:
+            condition = condition.unsqueeze(-1)
+            
         with torch.no_grad():
             x = self.flow(condition).transform.inv(z) # Transform latent variables back to original space conditioned on context
         return x.cpu()

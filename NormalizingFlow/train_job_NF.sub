@@ -12,7 +12,7 @@
 universe = vanilla
 
 # The executable is the shell script that will be run on the worker node
-executable = run_training_FFN.sh
+executable = run_training.sh
 
 # Arguments will be set per job in the queue section
 arguments = $(mainfile)
@@ -46,7 +46,7 @@ log    = logs/train_$(jobname).$(ClusterId).log
 #   nextweek     = 1 week
 #
 # For ~20 hours of training, use 'tomorrow' (24h) or 'testmatch' (3 days) to be safe
-+JobFlavour = "workday"
++JobFlavour = "tomorrow"
 
 # Alternative: Set exact runtime in seconds (20h = 72000s, adding buffer = 86400s)
 # +MaxRuntime = 86400
@@ -76,9 +76,31 @@ MY.WantOS = "el9"
 # -----------------------------------------------------------------------------
 # QUEUE THE JOBS
 # -----------------------------------------------------------------------------
-# Queue FFN training jobs
+# Each 'queue' command below submits ONE INDEPENDENT job to the cluster
+# Total: 4 separate jobs will be submitted
+# -----------------------------------------------------------------------------
 
-# FFN model training with categorical embeddings (era and njet)
-jobname = FFN_Embedding
-mainfile = main_cathegorical_embedding.py
-queue
+# # JOB 1: Normalizing Flow - Standard model
+# jobname = NF_Standard
+# mainfile = NF/main.py
+# queue 1
+
+# # JOB 2: Normalizing Flow - With phi features
+# jobname = NF_phi
+# mainfile = NF/main_phi.py
+# queue 1
+
+# # JOB 3: Normalizing Flow - Big model
+# jobname = NF_BIG
+# mainfile = NF/main_big.py
+# queue 1
+
+# # JOB 4: Normalizing Flow - With phi features BIG
+# jobname = NF_phi_big
+# mainfile = NF/main_phi_big.py
+# queue 1
+
+# JOB 5: Normalizing Flow - SR evaluation
+jobname = SR
+mainfile = NF/SR_evaluation.py
+queue 1

@@ -46,7 +46,7 @@ log    = logs/train_$(jobname).$(ClusterId).log
 #   nextweek     = 1 week
 #
 # For ~20 hours of training, use 'tomorrow' (24h) or 'testmatch' (3 days) to be safe
-+JobFlavour = "nextweek"
++JobFlavour = "tomorrow"
 
 # Alternative: Set exact runtime in seconds (20h = 72000s, adding buffer = 86400s)
 # +MaxRuntime = 86400
@@ -76,10 +76,31 @@ MY.WantOS = "el9"
 # -----------------------------------------------------------------------------
 # QUEUE THE JOBS
 # -----------------------------------------------------------------------------
-# Queue two jobs: one for light model and one for heavy model
-# Each job gets different arguments and output file names
+# Each 'queue' command below submits ONE INDEPENDENT job to the cluster
+# Total: 4 separate jobs will be submitted
+# -----------------------------------------------------------------------------
+ 
+# JOB 1: Feed-Forward Network - Standard model
+jobname = FFN_Standard
+mainfile = FFN_benchmark/main.py
+queue 1
 
-# Job: NF model
-jobname = NF_phi
-mainfile = main_phi.py
-queue
+# # JOB 2: Feed-Forward Network - With categorical embeddings (era and njet)
+# jobname = FFN_Embedding
+# mainfile = FFN_benchmark/main_cathegorical_embedding.py
+# queue 1
+
+# # JOB 3: Feed-Forward Network - With semi categorical embeddings
+# jobname = FFN_5j_cat_Embedding
+# mainfile = FFN_benchmark/main_5j.py
+# queue 1
+
+# JOB 4: Feed-Forward Network - With semi categorical embeddings
+jobname = FFN_5j
+mainfile = FFN_benchmark/main_5j_cont.py
+queue 1
+
+# JOB 5: Feed-Forward Network - With semi categorical embeddings
+jobname = FFN_5j_Embedding
+mainfile = FFN_benchmark/main_5j_emb.py
+queue 1

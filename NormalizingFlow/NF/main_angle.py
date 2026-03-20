@@ -18,13 +18,10 @@ if torch.cuda.is_available():
 from lib.features import features
 
 
-dir_path = '/eos/user/a/amorandi/HH4b/NF_phi_conditioning/'
+dir_path = '/eos/user/a/amorandi/HH4b/NF_phi_conditioning_big/'
 os.makedirs(dir_path, exist_ok=True)
 
-# Increase batch size for faster training with powerful GPUs
-# Larger batches = fewer iterations = faster training
-# A100/H100 can handle much larger batches than V100
-batch_size = 2048  # Increased from default 512
+batch_size = 2048 
 
 train_data, val_data = dl.full_data_loader(
     test_size=0, 
@@ -35,22 +32,28 @@ train_data, val_data = dl.full_data_loader(
 )
 
 phi_variables = [
+    "higgs1_reco_eta", "higgs2_reco_eta",
+    "hh_vec_eta", "hh_vec_DeltaPhi", "hh_vec_DeltaEta",
     "higgs1_reco_jet1_phi", "higgs1_reco_jet2_phi",
-    "higgs2_reco_jet1_phi", "higgs2_reco_jet2_phi"
+    "higgs2_reco_jet1_phi", "higgs2_reco_jet2_phi", 
+    "higgs1_reco_jet1_eta", "higgs1_reco_jet2_eta",
+    "higgs2_reco_jet1_eta", "higgs2_reco_jet2_eta",
+    "higgs1_DeltaRjj", "higgs2_DeltaRjj",
+    "minDeltaR_Higgjj", "maxDeltaR_Higgjj"
 ]
 phi_indices = [features.index(var) for var in phi_variables]
 
 model = md.FlowModel(
     input_dim=len(features), 
     context_dim=1, 
-    bins=20, 
+    bins=30, 
     transforms=4, 
     hidden_features=[256, 256], 
     dir_path=dir_path,
     phi_indices=phi_indices,
-    phi_bins=20,
+    phi_bins=30,
     phi_transforms=4,
-    phi_hidden_features=[64, 64],
+    phi_hidden_features=[256, 256],
     EarlyStopper_patience=30
 )
 

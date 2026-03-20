@@ -5,93 +5,155 @@ import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
 
-
-class FFNEmbeddingNetwork(nn.Module):
-    """
-    Neural network with embedding layers for categorical features.
-
-    param num_continuous: int, number of continuous features
-    param num_categorical: int, number of categorical features
-    param categorical_dims: list, number of unique values for each categorical feature
-    param embedding_dim: int, embedding dimension for each categorical feature
-    param total_input_dim: int, total input dimension after embedding
-    """
-
-    def __init__(
-        self, 
-        num_continuous, 
-        num_categorical, 
-        categorical_dims, 
-        embedding_dim, 
-        total_input_dim,
-        embedding_noise_std=0.1
-        ):
+class FFN_model(nn.Module):
+    def __init__(self, input_dim):
         super().__init__()
-
-        self.num_continuous = num_continuous
-        self.num_categorical = num_categorical
-        self.embedding_noise_std = embedding_noise_std
-
-        # Embedding layers for categorical features
-        if num_categorical > 0:
-            self.embeddings = nn.ModuleList([
-                nn.Embedding(num_classes, embedding_dim)
-                for num_classes in categorical_dims
-            ])
-            self.embedding_batch_norm = nn.BatchNorm1d(num_categorical * embedding_dim)
-        else:
-            self.embeddings = None
-
-        # Main FFN architecture
-        self.input_batch_norm = nn.BatchNorm1d(total_input_dim)
-
         self.network = nn.Sequential(
-            # Layer 1
-            nn.Linear(total_input_dim, 512),
+            nn.Linear(input_dim, 512),
             nn.GELU(),
             nn.BatchNorm1d(512),
             nn.Dropout(0.20),
-            # Layer 2
             nn.Linear(512, 256),
             nn.GELU(),
             nn.BatchNorm1d(256),
             nn.Dropout(0.20),
-            # Layer 3
             nn.Linear(256, 128),
             nn.GELU(),
             nn.BatchNorm1d(128),
             nn.Dropout(0.20),
-            # Layer 4
             nn.Linear(128, 64),
             nn.GELU(),
             nn.BatchNorm1d(64),
             nn.Dropout(0.20),
-            # Output layer
-            nn.Linear(64, 2),
+            nn.Linear(64, 2)
         )
 
-        print(f"  Total input dimension after embedding: {total_input_dim} "
-              f"(Continuous: {num_continuous}, Categorical: {num_categorical}"
-              + (f" with embedding dim {embedding_dim})" if num_categorical > 0 else ")"))
+    def forward(self, x):
+        return self.network(x)
 
-    def forward(self, x_cont, x_cat=None):
-        if self.num_categorical > 0 and x_cat is not None:
-            embedded = [emb(x_cat[:, i]) for i, emb in enumerate(self.embeddings)]
-            x_cat_emb = torch.cat(embedded, dim=1)
-            
-            # Add Gaussian noise during training for regularization
-            if self.training and self.embedding_noise_std > 0:
-                noise = torch.randn_like(x_cat_emb) * self.embedding_noise_std
-                x_cat_emb = x_cat_emb + noise
-            
-            x_cat_emb = self.embedding_batch_norm(x_cat_emb)
-            x = torch.cat([x_cont, x_cat_emb], dim=1)
+
+class CategoricalEmbeddingNetwork(nn.Module):
+    """
+    Neural network with early-fusion input processing for semicategorical features.
+    It structurally matches a standard FFN when semicategorical features are absent.
+    """
+    def __init__(
+        self,
+        num_continuous,
+        num_categorical,
+        categorical_dims,
+        embedding_dim,
+        pt_index=None,
+        jet_feature_indices=None,
+        embedding_noise_std=0.1
+    ):
+        super().__init__()
+        
+        self.num_continuous = num_continuous
+        self.num_categorical = num_categorical
+        self.pt_index = pt_index
+        self.embedding_noise_std = embedding_noise_std
+        
+        # Determine if we are actively using the semicategorical branch
+        self.use_semi_cat = pt_index is not None and jet_feature_indices is not None
+
+        if self.use_semi_cat:
+            self.register_buffer('jet_feature_indices', torch.tensor(jet_feature_indices, dtype=torch.long))
+            self.missing_jet_embedding = nn.Embedding(2, embedding_dim)
+            discrete_emb_dim = (num_categorical + 1) * embedding_dim # +1 for missing jet indicator
         else:
-            x = x_cont
+            discrete_emb_dim = num_categorical * embedding_dim if num_categorical > 0 else 0
 
+        # Standard Categorical Embeddings
+        if num_categorical > 0:
+            self.categorical_embeddings = nn.ModuleList([
+                nn.Embedding(num_classes, embedding_dim)
+                for num_classes in categorical_dims
+            ])
+        else:
+            self.categorical_embeddings = None
+
+        # Batch Norm specifically for discrete features
+        if discrete_emb_dim > 0:
+            self.embedding_batch_norm = nn.BatchNorm1d(discrete_emb_dim)
+        
+        # Calculate total dimension for early fusion
+        total_input_dim = num_continuous + discrete_emb_dim
+
+        # Global Batch Norm for the concatenated inputs
+        self.input_batch_norm = nn.BatchNorm1d(total_input_dim)
+
+        # Main FFN directly takes the concatenated features (no continuous bottleneck)
+        self.network = FFN_model(total_input_dim)
+
+
+    def forward(self, x_cont, x_semi_cat, x_cat=None):
+        cat_embeddings = []
+
+        # Handle standard categorical features
+        if self.num_categorical > 0 and x_cat is not None:
+            cat_embeddings = [emb(x_cat[:, i]) for i, emb in enumerate(self.categorical_embeddings)]
+            
+        # Handle semi-categorical features (The Mask & The Missing Jet Embedding)
+        if self.use_semi_cat and x_semi_cat is not None:
+            # Note: We create a boolean mask for torch.where, and a long mask for nn.Embedding
+            is_missing_jet_bool = (x_semi_cat[:, self.pt_index] == -10.0) 
+            is_missing_jet_idx = is_missing_jet_bool.long()
+            
+            # Get embedding for the "missing jet" state
+            missing_jet_emb = self.missing_jet_embedding(is_missing_jet_idx)
+            cat_embeddings.append(missing_jet_emb)
+
+            # Clean semi-categorical features: replace -10.0 with 0.0
+            x_semi_cat_cleaned = x_semi_cat.clone()
+            jet_mask = torch.zeros(x_semi_cat.size(1), dtype=torch.bool, device=x_semi_cat.device)
+            jet_mask[self.jet_feature_indices] = True
+            
+            mask_expanded = is_missing_jet_bool.unsqueeze(1).expand_as(x_semi_cat_cleaned[:, jet_mask])
+            x_semi_cat_cleaned[:, jet_mask] = torch.where(
+                mask_expanded,
+                torch.zeros_like(x_semi_cat_cleaned[:, jet_mask]),
+                x_semi_cat_cleaned[:, jet_mask]
+            )
+        else:
+            x_semi_cat_cleaned = None
+
+        # 3. Process Discrete Embeddings
+        if len(cat_embeddings) > 0:
+            discrete_output = torch.cat(cat_embeddings, dim=1)
+            # Add Gaussian noise during training
+            if self.training and self.embedding_noise_std > 0:
+                noise = torch.randn_like(discrete_output) * self.embedding_noise_std
+                discrete_output = discrete_output + noise
+            discrete_output = self.embedding_batch_norm(discrete_output)
+        else:
+            discrete_output = None
+
+        # 4. Gather Continuous Features
+        continuous_tensors = []
+        if x_cont is not None:
+            continuous_tensors.append(x_cont)
+        if x_semi_cat_cleaned is not None:
+            continuous_tensors.append(x_semi_cat_cleaned)
+            
+        if len(continuous_tensors) > 0:
+            continuous_output = torch.cat(continuous_tensors, dim=1)
+        else:
+            continuous_output = None
+
+        # 5. Early Fusion & Pass to Network
+        final_inputs = []
+        if continuous_output is not None:
+            final_inputs.append(continuous_output)
+        if discrete_output is not None:
+            final_inputs.append(discrete_output)
+
+        x = torch.cat(final_inputs, dim=1)
+        
+        # Global input normalization
         x = self.input_batch_norm(x)
-        x = self.network(x)
-        return x
+        
+        return self.network(x)
 
 
 class FFN:
@@ -101,97 +163,90 @@ class FFN:
         dir_path,
         categorical_features=[],
         categorical_dims=[],
+        semicategorical_features=[],
+        pt_index=None,
+        jet_feature_indices=None,
         embedding_dim=None,
         embedding_noise_std=0.1,
         EarlyStopper_patience=15,
         device='cuda' if torch.cuda.is_available() else 'cpu'
-        ):
-        """
-        FFN with categorical feature embeddings using PyTorch.
-
-        param input_dim: int, total number of input features (continuous + categorical)
-        param dir_path: str, directory path for saving models and plots
-        param categorical_features: list, indices of categorical features
-        param categorical_dims: list, number of unique values for each categorical feature
-        param embedding_dim: int, embedding dimension for each categorical feature
-        param embedding_noise_std: float, standard deviation of Gaussian noise added to embeddings during training
-        param EarlyStopper_patience: int, patience for early stopping
-        param device: str, device preference for training ('cuda' or 'cpu')
-        """
-
+    ):
         self.input_dim = input_dim
         self.dir_path = dir_path
         self.categorical_features = categorical_features
         self.categorical_dims = categorical_dims
+        self.semicategorical_features = semicategorical_features
         self.embedding_dim = embedding_dim
         self.embedding_noise_std = embedding_noise_std
         self.device = device
+        
+        self.pt_index = pt_index
+        self.jet_feature_indices = jet_feature_indices
 
         self.num_categorical = len(categorical_features)
-        self.num_continuous = input_dim - self.num_categorical
+        self.num_semicategorical = len(semicategorical_features)
+        self.num_continuous = input_dim - self.num_categorical - self.num_semicategorical
 
-        # Calculate total input dimension
-        if self.num_categorical > 0:
-            if self.embedding_dim is None:
-                raise ValueError("embedding_dim must be specified when using categorical features")
-            self.total_input_dim = self.num_continuous + (self.num_categorical * self.embedding_dim)
-        else:
-            self.total_input_dim = self.num_continuous
+        # Validation checks
+        if self.num_semicategorical > 0:
+            if pt_index is None or jet_feature_indices is None:
+                raise ValueError("pt_index and jet_feature_indices must be specified for semicategorical features")
+            if embedding_dim is None:
+                raise ValueError("embedding_dim must be specified when using semicategorical features")
 
-        self.lr = 1e-3
-        self.EarlyStopper_patience = EarlyStopper_patience
-
-        # Create network with embeddings
-        self.model = FFNEmbeddingNetwork(
-            num_continuous=self.num_continuous,
+        # Initialize Model
+        self.model = CategoricalEmbeddingNetwork(
+            num_continuous=self.num_continuous + self.num_semicategorical,
             num_categorical=self.num_categorical,
             categorical_dims=self.categorical_dims,
             embedding_dim=self.embedding_dim,
-            total_input_dim=self.total_input_dim,
+            pt_index=self.pt_index,
+            jet_feature_indices=self.jet_feature_indices,
             embedding_noise_std=self.embedding_noise_std
         ).to(self.device)
 
-        # Optimizer and loss
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        self.lr = 1e-3
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr) 
         self.criterion = nn.CrossEntropyLoss()
-
-        # Adaptive exponential LR scheduler
-        # gamma decreases by 0.05 if no val_accuracy improvement for gamma_patience epochs
+        self.EarlyStopper_patience = EarlyStopper_patience
+        
         self.gamma = 0.95
         self.gamma_min = 0.5
-        self.gamma_patience = 10
-        self.gamma_counter = 0
-        self.best_val_acc_for_gamma = 0.0
         self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=self.gamma)
-
         self.history = {'loss': [], 'val_loss': [], 'accuracy': [], 'val_accuracy': [], 'lr': []}
-
+        self.best_val_acc_for_gamma = 0.0
+        self.gamma_patience = 5
+        self.gamma_counter = 0
 
     def _split_features(self, X):
         """
-        Split input features into continuous and categorical.
-
-        param X: np.ndarray or torch.Tensor of all features (batch_size, input_dim)
-        return: tuple (x_cont, x_cat)
+        Cleanly split input features using set operations.
+        Works efficiently for both NumPy arrays and PyTorch tensors.
         """
+        all_indices = set(range(self.input_dim))
+        cat_set = set(self.categorical_features)
+        semi_set = set(self.semicategorical_features)
+        
+        # The remaining indices belong to pure continuous features
+        cont_indices = sorted(list(all_indices - cat_set - semi_set))
+
+        # Convert to tensor/array subsets
         if isinstance(X, torch.Tensor):
-            all_indices = list(range(self.input_dim))
-            cat_indices = self.categorical_features
-            cont_indices = [i for i in all_indices if i not in cat_indices]
-
-            x_cont = X[:, cont_indices].float()
-            x_cat = X[:, cat_indices].long() if len(cat_indices) > 0 else None
+            x_cont = X[:, cont_indices].float() if len(cont_indices) > 0 else None
+            x_semi_cat = X[:, self.semicategorical_features].float() if self.num_semicategorical > 0 else None
+            x_cat = X[:, self.categorical_features].long() if self.num_categorical > 0 else None
         else:
-            all_indices = np.arange(self.input_dim)
-            cat_indices = np.array(self.categorical_features)
-            cont_mask = ~np.isin(all_indices, cat_indices)
-            cont_indices = all_indices[cont_mask]
+            x_cont = torch.tensor(X[:, cont_indices], dtype=torch.float32) if len(cont_indices) > 0 else None
+            x_semi_cat = torch.tensor(X[:, self.semicategorical_features], dtype=torch.float32) if self.num_semicategorical > 0 else None
+            x_cat = torch.tensor(X[:, self.categorical_features], dtype=torch.long) if self.num_categorical > 0 else None
 
-            x_cont = X[:, cont_indices].astype(np.float32)
-            x_cat = X[:, cat_indices].astype(np.int64) if len(cat_indices) > 0 else None
+        # Move to correct device
+        if x_cont is not None: x_cont = x_cont.to(self.device)
+        if x_semi_cat is not None: x_semi_cat = x_semi_cat.to(self.device)
+        if x_cat is not None: x_cat = x_cat.to(self.device)
 
-        return x_cont, x_cat
-
+        return x_cont, x_semi_cat, x_cat
+    
 
     def print_model_summary(self):
         """
@@ -205,10 +260,13 @@ class FFN:
         print(f"Total parameters: {total_params:,}")
         print(f"Trainable parameters: {trainable_params:,}")
         print(f"Continuous features: {self.num_continuous}")
-        print(f"Categorical features: {self.num_categorical}")
+        if self.num_semicategorical > 0:
+            print(f"Semi-categorical features: {self.num_semicategorical}")
         if self.num_categorical > 0:
+            print(f"Categorical features: {self.num_categorical}")
             print(f"Embedding dimension: {self.embedding_dim}")
             print(f"Categorical dimensions: {self.categorical_dims}")
+        if self.num_categorical > 0 or self.num_semicategorical > 0:
             print(f"Embedding noise std: {self.embedding_noise_std}")
         print()
 
@@ -241,13 +299,16 @@ class FFN:
                 batch_X = batch_X.to(self.device)
                 batch_y = batch_y.to(self.device).long().squeeze(-1)
 
-                x_cont, x_cat = self._split_features(batch_X)
-                x_cont = x_cont.to(self.device)
-                if x_cat is not None:
-                    x_cat = x_cat.to(self.device)
+                x_cont, x_semi_cat, x_cat = self._split_features(batch_X)
+                if x_cont is not None: x_cont = x_cont.to(self.device)
+                if x_semi_cat is not None: x_semi_cat = x_semi_cat.to(self.device)
+                if x_cat is not None: x_cat = x_cat.to(self.device)
 
                 self.optimizer.zero_grad()
-                logits = self.model(x_cont, x_cat)
+                if self.num_semicategorical > 0:
+                    logits = self.model(x_cont, x_semi_cat, x_cat)
+                else:
+                    logits = self.model(x_cont, x_cat)
                 loss = self.criterion(logits, batch_y)
                 loss.backward()
                 self.optimizer.step()
@@ -271,12 +332,15 @@ class FFN:
                     batch_X = batch_X.to(self.device)
                     batch_y = batch_y.to(self.device).long().squeeze(-1)
 
-                    x_cont, x_cat = self._split_features(batch_X)
-                    x_cont = x_cont.to(self.device)
-                    if x_cat is not None:
-                        x_cat = x_cat.to(self.device)
+                    x_cont, x_semi_cat, x_cat = self._split_features(batch_X)
+                    if x_cont is not None: x_cont = x_cont.to(self.device)
+                    if x_semi_cat is not None: x_semi_cat = x_semi_cat.to(self.device)
+                    if x_cat is not None: x_cat = x_cat.to(self.device)
 
-                    logits = self.model(x_cont, x_cat)
+                    if self.num_semicategorical > 0:
+                        logits = self.model(x_cont, x_semi_cat, x_cat)
+                    else:
+                        logits = self.model(x_cont, x_cat)
                     loss = self.criterion(logits, batch_y)
 
                     val_running_loss += loss.item() * batch_X.size(0)
@@ -334,7 +398,7 @@ class FFN:
         # Save best model
         dir_path_models = self.dir_path + 'weights/'
         os.makedirs(dir_path_models, exist_ok=True)
-        save_path = dir_path_models + 'flow_model.pt'
+        save_path = dir_path_models + 'flow_model.pth'
         torch.save(self.model.state_dict(), save_path)
         print(f"Model weights saved to {save_path}")
 
@@ -407,21 +471,18 @@ class FFN:
         """
         Predict class probabilities for input data.
 
-        param X: np.ndarray, input features (batch_size, input_dim)
+        param X: np.ndarray or torch.Tensor, input features (batch_size, input_dim)
         return: np.ndarray, predicted class probabilities (batch_size, 2)
         """
         self.model.eval()
 
-        if isinstance(X, torch.Tensor):
-            X = X.cpu().numpy()
-
-        x_cont, x_cat = self._split_features(X)
-        x_cont = torch.tensor(x_cont, dtype=torch.float32).to(self.device)
-        if x_cat is not None:
-            x_cat = torch.tensor(x_cat, dtype=torch.long).to(self.device)
+        x_cont, x_semi_cat, x_cat = self._split_features(X)
 
         with torch.no_grad():
-            logits = self.model(x_cont, x_cat)
+            if self.num_semicategorical > 0:
+                logits = self.model(x_cont, x_semi_cat, x_cat)
+            else:
+                logits = self.model(x_cont, x_cat)
             probs = torch.softmax(logits, dim=1)
 
         return probs.cpu().numpy()

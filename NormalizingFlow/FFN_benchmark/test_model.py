@@ -25,7 +25,8 @@ from lib.tester_function import (
     plot_single_scatter,
     create_summary_bar_plot,
     distribution_comparison_analysis,
-    distribution_comparison_analysis_light
+    distribution_comparison_analysis_light,
+    plot_reweighting_patterns
 )
 
 
@@ -62,10 +63,6 @@ class FFNModelTester:
         self.X_test = []
         self.y_test = []
         for batch_X, batch_y in test_data_loader:
-            if hasattr(batch_X, 'cpu'):  # If it's a PyTorch tensor
-                batch_X = batch_X.cpu().numpy()
-            if hasattr(batch_y, 'cpu'):
-                batch_y = batch_y.cpu().numpy()
             self.X_test.append(batch_X)
             self.y_test.append(batch_y)
         
@@ -520,4 +517,121 @@ class FFNModelTester:
             print("\n[INFO] Per-feature importance data found. Skipping evaluation. Use force_recompute=True to recompute.")
         
         self.visualize_per_feature_likelihood(h5_filename, top_n)
+        return 0
+
+
+    # =========================================================================
+    # REWEIGHTING PATTERN ANALYSIS
+    # =========================================================================
+
+    def evaluate_reweighting_patterns(self, features=[], h5_filename='reweighting_patterns', batch_size=1024):
+        """
+        EVALUATION: Compute reweighting weights and feature values.
+        Saves data to HDF5 for later visualization.
+
+        param features: list of feature names to analyze (if empty, analyze all except 'era')
+        param h5_filename: Name of the h5 file to save (without extension)
+        param batch_size: number of samples to process in each batch (to avoid memory issues)
+        """
+        print("\n" + "="*60)
+        print("Reweighting Pattern Analysis - EVALUATION PHASE")
+        print("="*60)
+        
+        # Compute predicted probabilities
+        print(f"\nComputing predictions in batches of {batch_size}...")
+        proba_list = []
+        
+        for i in tqdm(range(0, len(self.X_test), batch_size), desc="Computing predictions"):
+            batch_X = self.X_test[i:i+batch_size]
+            proba_batch = self.model.predict_proba(batch_X)
+            proba_list.append(proba_batch)
+        
+        proba_all = np.vstack(proba_list)
+        y_test_np = self.y_test
+        
+        # Extract 2b events
+        mask_2b = (y_test_np == 0)
+        events_2b = self.X_test[mask_2b]
+        prob_2b = proba_all[mask_2b, 0]  # P(class=0|X) for 2b events
+        prob_4b = proba_all[mask_2b, 1]  # P(class=1|X) for 2b events
+        
+        # Compute weights: ratio of probabilities
+        epsilon = 1e-10
+        weights = prob_4b / (prob_2b + epsilon)
+        
+        if len(features) == 0:
+            features = [f for f in self.features if f != 'era']
+        
+        print(f"\nAnalyzing {len(features)} features...")
+        print(f"Number of 2b events: {len(events_2b)}")
+        print(f"Weight statistics (post-clip): min={weights.min():.4f}, max={weights.max():.4f}, "
+              f"mean={weights.mean():.4f}, median={np.median(weights):.4f}")
+        
+        # =======================================================================
+        # Save data
+        # =======================================================================
+        
+        # Convert feature names to ASCII for HDF5 compatibility
+        features_array = np.array(features, dtype='S')
+        
+        reweighting_data = {
+            'events_2b': events_2b,
+            'weights': weights,
+            'features_analyzed': features_array
+        }
+        
+        self._save_to_h5(h5_filename, reweighting_data)
+        print("\nReweighting pattern evaluation completed")
+        return 0
+
+
+    def visualize_reweighting_patterns(self, h5_filename='reweighting_patterns', window_size=1000):
+        """
+        VISUALIZATION: Create reweighting pattern heatmap plots.
+        Loads pre-computed weights and feature values from HDF5.
+
+        param h5_filename: Name of the h5 file to load (without extension)
+        param window_size: window size for moving average (to show trend in scatter plot)
+        """
+        # =======================================================================
+        # Load pre-computed data
+        # =======================================================================
+        
+        data = self._load_from_h5(h5_filename)
+        events_2b = data['events_2b']
+        weights = data['weights']
+        
+        features = [f for f in self.features if f != 'era']
+        
+        # Use common visualization function from tester_function
+        plot_reweighting_patterns(
+            events_2b=events_2b,
+            weights=weights,
+            features_to_analyze=features,
+            all_features=self.features,
+            dir_path=self.dir_path,
+            window_size=window_size
+        )
+        
+        return 0
+
+
+    def reweighting_patterns(self, features=[], h5_filename='reweighting_patterns', batch_size=1024, 
+                            window_size=1000, force_recompute=False):
+        """
+        COMBINED: Full reweighting pattern analysis (backward compatible).
+        Runs evaluation if needed, then visualization.
+
+        param features: list of feature names to analyze (if empty, analyze all except 'era')
+        param h5_filename: Name of the h5 file to produce/load (without extension)
+        param batch_size: number of samples to process in each batch (to avoid memory issues)
+        param window_size: window size for moving average (to show trend in heatmap plot)
+        param force_recompute: If True, recompute even if data exists
+        """
+        if force_recompute or not self._check_eval_data_exists(h5_filename, required_keys=['weights', 'events_2b']):
+            self.evaluate_reweighting_patterns(features, h5_filename, batch_size)
+        else:
+            print("\n[INFO] Reweighting patterns data found. Skipping evaluation. Use force_recompute=True to recompute.")
+        
+        self.visualize_reweighting_patterns(h5_filename, window_size)
         return 0

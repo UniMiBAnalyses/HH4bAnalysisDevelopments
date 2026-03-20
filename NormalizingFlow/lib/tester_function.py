@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report, confusion_matrix
 from scipy.stats import norm, ks_2samp
-import data_loader as dl
 from tqdm import tqdm
 import os
 
@@ -626,7 +625,7 @@ def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_p
         filename=dir_path_base + 'kl_divergence_comparison.png',
         color='darkgreen',
         sort_descending=True,
-        ylim=(0, 0.004)
+        ylim=(0, 0.005)
     )
     
     # Plot Maximum Mean Discrepancy
@@ -638,7 +637,7 @@ def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_p
         filename=dir_path_base + 'mmd_comparison.png',
         color='darkred',
         sort_descending=True,
-        ylim=(0, 0.03)
+        ylim=(0, 0.04)
     )
     
     # Plot Kolmogorov-Smirnov test statistic
@@ -650,7 +649,7 @@ def distribution_comparison_analysis_light(X_2b, X_4b, X_target, features, dir_p
         filename=dir_path_base + 'ks_statistic_comparison.png',
         color='steelblue',
         sort_descending=True,
-        ylim=(0, 0.1)
+        ylim=(0, 0.03)
     )
     
     print(f"  Summary plots saved to {dir_path_base}")
@@ -968,7 +967,8 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
             
             # Right plot: QQ plot of 4b vs target
             # Bootstrap 4b to match sample size for fair comparison
-            X_4b_bootstrap = dl.bootstrap_data(X_4b_feature, number_of_samples=len(X_target_feature_clean))
+            bootstrap_indices = np.random.choice(len(X_4b_feature), size=len(X_target_feature_clean), replace=True)
+            X_4b_bootstrap = X_4b_feature[bootstrap_indices]
             sorted_4b = np.sort(X_4b_bootstrap)
             sorted_target = np.sort(X_target_feature_clean)
             
@@ -1097,7 +1097,7 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
         filename=dir_path_base + 'kl_divergence_comparison.png',
         color='darkgreen',
         sort_descending=True,
-        ylim=(0, 0.004)
+        ylim=(0, 0.005)
     )
     
     # Plot Maximum Mean Discrepancy
@@ -1109,7 +1109,7 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
         filename=dir_path_base + 'mmd_comparison.png',
         color='darkred',
         sort_descending=True,
-        ylim=(0, 0.03)
+        ylim=(0, 0.04)
     )
     
     # Plot Kolmogorov-Smirnov test statistic
@@ -1120,7 +1120,8 @@ def distribution_comparison_analysis(X_2b, X_4b, X_target, features, dir_path_ba
         ylabel='KS Statistic',
         filename=dir_path_base + 'ks_statistic_comparison.png',
         color='steelblue',
-        sort_descending=True
+        sort_descending=True,
+        ylim=(0, 0.03)
     )
     
     print(f"  Summary plots saved to {dir_path_base}")
@@ -1245,3 +1246,84 @@ def latent_space_normality_analysis(z_latent, features, dir_path_base):
     return fit_stats
 
 
+def plot_reweighting_patterns(events_2b, weights, features_to_analyze, all_features, dir_path, window_size=1000):
+    """
+    Create reweighting pattern heatmap plots showing how weights vary with feature values.
+    
+    param events_2b: np.ndarray, 2b events data (n_samples, n_features)
+    param weights: np.ndarray, reweighting weights for each event (n_samples,)
+    param features_to_analyze: list of str, feature names to analyze and plot
+    param all_features: list of str, all feature names (for indexing into events_2b)
+    param dir_path: str, base directory path for saving plots
+    param window_size: int, window size for moving average trend line
+    
+    return: 0
+    """
+    print("\n" + "="*60)
+    print("Reweighting Pattern Analysis - VISUALIZATION PHASE")
+    print("="*60)
+    
+    # Setup directories
+    dir_path_weights = dir_path + 'weights_analysis/'
+    os.makedirs(dir_path_weights, exist_ok=True)
+    
+    # Print weight statistics
+    print(f"\nWeight statistics: min={weights.min():.4f}, max={weights.max():.4f}, "
+          f"mean={weights.mean():.4f}, median={np.median(weights):.4f}")
+    
+    print(f"\nGenerating heatmap plots for {len(features_to_analyze)} features...")
+    
+    for i, feature in enumerate(tqdm(features_to_analyze, desc="Heatmap plots")):
+        feature_idx = all_features.index(feature)
+        feature_values = events_2b[:, feature_idx]
+        
+        fig, ax = plt.subplots(figsize=(12, 7))
+        
+        x_bins = 250
+        y_bins = 250
+        
+        # Create 2D histogram
+        hist, xedges, yedges = np.histogram2d(feature_values, weights, bins=[x_bins, y_bins])
+        hist = hist.T  # Transpose so rows=y, columns=x
+        
+        # --- NEW: Convert raw counts to fraction of total events ---
+        total_events = hist.sum()
+        if total_events > 0:
+            hist = hist / total_events
+        
+        # Plot heatmap showing the fraction of events
+        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+        im = ax.imshow(hist, origin='lower', aspect='auto', cmap='viridis',
+                      extent=extent, interpolation='gaussian', alpha=0.7)
+        cbar = plt.colorbar(im, ax=ax, label='Fraction of events')
+        
+        # Blue line at y = 1 (reference weight)
+        ax.axhline(y=1, color='blue', linestyle='--', linewidth=2, 
+                  label='Reference weight (w = 1)', zorder=5)
+        
+        # Moving average to show trend
+        sorted_idx = np.argsort(feature_values)
+        if len(feature_values) > window_size:
+            # Use convolution for moving average
+            weights_sorted = np.clip(weights[sorted_idx], 0, 100)
+            moving_avg = np.convolve(weights_sorted, np.ones(window_size)/window_size, mode='valid')
+            x_smooth = feature_values[sorted_idx][window_size-1:]
+            ax.plot(x_smooth, moving_avg, color='red', linewidth=3, 
+                   label=f'Moving average (window={window_size})', zorder=10)
+        
+        ax.set_xlabel(f'{feature}', fontsize=11)
+        ax.set_ylabel('Weight (log scale)', fontsize=11)
+        ax.set_title(f'Reweighting Pattern: {feature}', fontsize=13, fontweight='bold')
+        ax.set_ylim(0.01, 100)  # Set y-axis limits
+        ax.set_yscale('log')  # Log scale
+        ax.grid(alpha=0.3, which='both')
+        ax.legend(fontsize=9, loc='best')
+        
+        plt.tight_layout()
+        plt.savefig(dir_path_weights + f'weight_pattern_{feature}.png', 
+                    dpi=150, bbox_inches='tight')
+        plt.close()
+    
+    print(f"\n  Plots saved in: {dir_path_weights}")
+    print("\nReweighting pattern visualization completed")
+    return 0

@@ -15,51 +15,22 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()
 
 
-features = [
-    # "era",
-    "HT",
-    # "sigma_higgs1", 
-    "sigma_over_higgs1_reco_mass",
-    "higgs1_reco_pt", "higgs1_reco_eta", 
-    # "higgs1_reco_phi", 
-    "higgs1_reco_mass",
-    # "sigma_higgs2", 
-    "sigma_over_higgs2_reco_mass",
-    "higgs2_reco_pt", "higgs2_reco_eta", 
-    #"higgs2_reco_phi", 
-    "higgs2_reco_mass",
-    "hh_vec_mass", "hh_vec_pt", "hh_vec_eta", 
-    #"hh_vec_phi", "hh_vec_DeltaR", 
-    "hh_vec_DeltaPhi", "hh_vec_DeltaEta", 
-    # "hh_vec_ptOmass",
-    # "njet",
-    "higgs1_reco_jet1_pt", "higgs1_reco_jet1_eta", "higgs1_reco_jet1_phi", "higgs1_reco_jet1_mass",
-    "higgs1_reco_jet2_pt", "higgs1_reco_jet2_eta", "higgs1_reco_jet2_phi", "higgs1_reco_jet2_mass",
-    # "higgs1_DeltaPhijj", "higgs1_DeltaEtajj", 
-    "higgs1_DeltaRjj",
-    "higgs2_reco_jet1_pt", "higgs2_reco_jet1_eta", "higgs2_reco_jet1_phi", "higgs2_reco_jet1_mass",
-    "higgs2_reco_jet2_pt", "higgs2_reco_jet2_eta", "higgs2_reco_jet2_phi", "higgs2_reco_jet2_mass",
-    # "higgs2_DeltaPhijj", "higgs2_DeltaEtajj", 
-    "higgs2_DeltaRjj",
-    "minDeltaR_Higgjj", "maxDeltaR_Higgjj",
-    # "higgs1_helicityCosTheta", "higgs2_helicityCosTheta",
-    # "hh_CosThetaStar_CS"#,
-    # "higgs_ST",
-    # "jet1pt_pt", "jet2pt_pt", "jet3pt_pt", "jet4pt_pt",
-    # "add_jet1pt_pt", "add_jet1pt_eta", "add_jet1pt_phi", "add_jet1pt_mass",
-    # "add_jet1pt_Higgs1_deta", "add_jet1pt_Higgs1_dphi", "add_jet1pt_Higgs1_m",
-    # "add_jet1pt_Higgs2_deta", "add_jet1pt_Higgs2_dphi", "add_jet1pt_Higgs2_m"
-]
+from lib.features import features
 
 
-dir_path = '/eos/user/a/amorandi/HH4b/NF_HQ/'
+dir_path = '/eos/user/a/amorandi/HH4b/NF/'
 os.makedirs(dir_path, exist_ok=True)
 
+# Increase batch size for faster training with powerful GPUs
+# Larger batches = fewer iterations = faster training
+# A100/H100 can handle much larger batches than V100
+batch_size = 2048  # Increased from default 512
 
 train_data, val_data = dl.full_data_loader(
     test_size=0, 
     validation_size=0.25, 
-    features=features, 
+    features=features,
+    batch_size=batch_size,
     seed=42
 )
 
@@ -72,15 +43,20 @@ model = md.FlowModel(
     dir_path=dir_path, 
     EarlyStopper_patience=30
 )
+
+# Print GPU info
+if torch.cuda.is_available():
+    print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+    print(f"Batch size: {batch_size}")
+
 model.print_model_summary()
 
 if os.path.exists(dir_path + 'weights/flow_model.pth'):
     model.load_model(dir_path + 'weights/flow_model.pth')
 else:
     print("Starting training...")
-    model.train(train_data, val_data, epochs=9999)
+    model.train(train_data, val_data, epochs=999)
     model.plot_training_loss()
-
     model.load_model(dir_path + 'weights/flow_model.pth')
 
 # =========================================================================
@@ -91,11 +67,12 @@ test_data_all = dl.full_data_loader(
     bootstrap_coef_4b=1, 
     test_size=0, 
     validation_size=0, 
-    features=features, 
+    features=features,
+    batch_size=batch_size,
     seed=42
 )
 
-test_model = tm.FFNModelTester(
+test_model = tm.ModelTester(
     model=model, 
     test_data_loader=test_data_all, 
     features=features, 
@@ -105,7 +82,7 @@ test_model = tm.FFNModelTester(
 dir_eval = dir_path + 'eval_data/'
 
 # 2b to 4b transformation analysis
-test_model.transform_2b_to_4b(test_data_all, h5_filename=dir_eval + 'transform_2b_to_4b_scenario')
+test_model.transform_2b_to_4b(test_data_all, h5_filename=dir_eval + 'transform_2b_to_4b_scenario', use_light_analysis=False)
 
 # Binary classification analysis (2b vs 4b)
 test_model.classification_analysis(h5_filename=dir_eval + 'classification_analysis')
@@ -113,7 +90,10 @@ test_model.classification_analysis(h5_filename=dir_eval + 'classification_analys
 # Per-feature likelihood analysis
 test_model.per_feature_likelihood(h5_filename=dir_eval + 'per_feature_likelihood_scenario', top_n=len(features))
 
+# Reweighting pattern analysis
+test_model.reweighting_patterns(h5_filename=dir_eval + 'reweighting_patterns')
 
-
+# Feature shift analysis
+test_model.feature_shift_analysis(test_data_all, h5_filename=dir_eval + 'feature_shift_analysis')
 
 
